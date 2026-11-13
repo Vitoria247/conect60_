@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// Contas: idosos/familiares e profissionais de saúde (cadastro comum ou com Google)
+model Usuario {
+  id          Int      @id @default(autoincrement())
+  nome        String   @db.VarChar(150)
+  email       String   @unique @db.VarChar(191)
+  telefone    String?  @unique @db.VarChar(20)
+  googleId    String?  @unique @db.VarChar(64)
+  senhaHash   String?  @db.VarChar(64)
+  senhaSalt   String?  @db.VarChar(64)
+  foto        String?  @db.LongText
+  pro         Boolean  @default(false)
+  crefito     String?  @db.VarChar(40)
+  titulo      String?  @db.VarChar(120)
+  resumo      String?  @db.Text
+  dataCriacao DateTime @default(now())
+
+  atividades          Atividade[]
+  progresso           ProgressoAula[]
+  avaliacoesFeitas    Avaliacao[]     @relation("AvaliacaoAluno")
+  avaliacoesRecebidas Avaliacao[]     @relation("AvaliacaoProfissional")
+
+  @@map("usuarios")
+}
+
+// Atividades (arquivos) publicadas pelos profissionais
+model Atividade {
+  id          Int      @id @default(autoincrement())
+  usuarioId   Int
+  nome        String   @db.VarChar(255)
+  dataCriacao DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@index([usuarioId])
+  @@map("atividades")
+}
+
+// Aulas concluídas por cada aluno (aula = 0 a 3, na ordem da tela)
+model ProgressoAula {
+  id          Int      @id @default(autoincrement())
+  usuarioId   Int
+  aula        Int
+  concluidaEm DateTime @default(now())
+
+  usuario Usuario @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+
+  @@unique([usuarioId, aula])
+  @@map("progresso_aulas")
+}
+
+// Avaliação final do aluno sobre o fisioterapeuta (nota 1 a 4: Não gostei, Neutro, Gostei, Ótimo)
+model Avaliacao {
+  id               Int      @id @default(autoincrement())
+  alunoId          Int
+  profissionalId   Int?
+  profissionalNome String   @db.VarChar(150)
+  nota             Int
+  dataCriacao      DateTime @default(now())
+
+  aluno        Usuario  @relation("AvaliacaoAluno", fields: [alunoId], references: [id], onDelete: Cascade)
+  profissional Usuario? @relation("AvaliacaoProfissional", fields: [profissionalId], references: [id], onDelete: SetNull)
+
+  @@index([alunoId])
+  @@index([profissionalId])
+  @@map("avaliacoes")
+}
+
+// Mensagens enviadas pelo formulário "Fale conosco"
+model Contato {
+  id          Int      @id @default(autoincrement())
+  nome        String   @db.VarChar(150)
+  email       String   @db.VarChar(191)
+  mensagem    String   @db.Text
+  dataCriacao DateTime @default(now())
+
+  @@map("contatos")
+}
